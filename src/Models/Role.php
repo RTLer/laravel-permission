@@ -2,7 +2,7 @@
 
 namespace Spatie\Permission\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Jenssegers\Mongodb\Model;
 use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use Spatie\Permission\Traits\HasPermissions;
@@ -52,7 +52,7 @@ class Role extends Model implements RoleContract
      */
     public function users()
     {
-        return $this->belongsToMany(
+        return $this->hasMany(
             config('auth.model'),
             config('laravel-permission.table_names.user_has_roles')
         );
