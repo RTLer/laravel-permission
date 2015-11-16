@@ -10,31 +10,6 @@ trait HasRoles
     use HasPermissions;
     use RefreshesPermissionCache;
 
-    /**
-     * A user may have multiple roles.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function roles()
-    {
-        return $this->belongsToMany(
-            config('laravel-permission.models.role'),
-            config('laravel-permission.table_names.user_has_roles')
-        );
-    }
-
-    /**
-     * A user may have multiple direct permissions.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function permissions()
-    {
-        return $this->belongsToMany(
-            config('laravel-permission.models.permission'),
-            config('laravel-permission.table_names.user_has_permissions')
-        );
-    }
 
     /**
      * Assign the given role to the user.
@@ -45,7 +20,13 @@ trait HasRoles
      */
     public function assignRole($role)
     {
-        $this->roles()->save($this->getStoredRole($role));
+        $role = $this->getStoredRole($role);
+        $roles = $this->getUserRoles();
+        if(array_search($role->_id,$roles) === false){
+            $roles[] = $role->_id;
+        }
+        $this->roles = $roles;
+        $this->save();
     }
 
     /**
@@ -57,7 +38,28 @@ trait HasRoles
      */
     public function removeRole($role)
     {
-        $this->roles()->detach($this->getStoredRole($role));
+        $role = $this->getStoredRole($role);
+        $roles = $this->getUserRoles();
+
+        $key = array_search($role->_id,$roles);
+        if($key !== false){
+            unset($roles[$key]);
+        }
+
+        $this->roles = $roles;
+        $this->save();
+    }
+
+    /**
+     * get array of user roles.
+     *
+     */
+    public function getUserRoles(){
+        $roles = [];
+        if(is_array($this->roles)){
+            $roles = $this->roles;
+        }
+        return $roles;
     }
 
     /**
@@ -70,11 +72,13 @@ trait HasRoles
     public function hasRole($roles)
     {
         if (is_string($roles)) {
-            return $this->roles->contains('name', $roles);
+            $roleId = \Spatie\Permission\Models\Role::where('name', $roles)->first()->_id;
+            return (array_search($roleId,$this->roles) !== false);
         }
 
         if ($roles instanceof Role) {
-            return $this->roles->contains('id', $roles->id);
+            return (array_search($roles->_id,$this->roles) !== false);
+
         }
 
         return (bool) !!$roles->intersect($this->roles)->count();
@@ -102,18 +106,19 @@ trait HasRoles
     public function hasAllRoles($roles)
     {
         if (is_string($roles)) {
-            return $this->roles->contains('name', $roles);
+            $roleId = \Spatie\Permission\Models\Role::where('name', $roles)->first()->_id;
+            return (array_search($roleId,$this->roles) !== false);
         }
 
         if ($roles instanceof Role) {
-            return $this->roles->contains('id', $roles->id);
+            return (array_search($roles->_id,$this->roles) !== false);
         }
 
         $roles = collect()->make($roles)->map(function ($role) {
-            return $role instanceof Role ? $role->name : $role;
+            return $role instanceof Role ? $role->_id : $role;
         });
 
-        return $roles->intersect($this->roles->lists('name')) == $roles;
+        return $roles->intersect($this->roles) == $roles;
     }
 
     /**
