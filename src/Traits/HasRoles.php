@@ -4,6 +4,7 @@ namespace Spatie\Permission\Traits;
 
 use Spatie\Permission\Contracts\Permission;
 use Spatie\Permission\Contracts\Role;
+use Spatie\Permission\Models\Role as RoleModel;
 
 trait HasRoles
 {
@@ -51,6 +52,16 @@ trait HasRoles
     }
 
     /**
+     * get users roles list.
+     *
+     * @return \Spatie\Permission\Models\Role
+     */
+    public function getRoles()
+    {
+        return RoleModel::whereIn('_id', $this->roles)->get();
+    }
+
+    /**
      * get array of user roles.
      *
      */
@@ -72,7 +83,7 @@ trait HasRoles
     public function hasRole($roles)
     {
         if (is_string($roles)) {
-            $roleId = \Spatie\Permission\Models\Role::where('name', $roles)->first()->_id;
+            $roleId = RoleModel::where('name', $roles)->first()->_id;
             return (array_search($roleId,$this->roles) !== false);
         }
 
@@ -106,7 +117,7 @@ trait HasRoles
     public function hasAllRoles($roles)
     {
         if (is_string($roles)) {
-            $roleId = \Spatie\Permission\Models\Role::where('name', $roles)->first()->_id;
+            $roleId = RoleModel::where('name', $roles)->first()->_id;
             return (array_search($roleId,$this->roles) !== false);
         }
 
