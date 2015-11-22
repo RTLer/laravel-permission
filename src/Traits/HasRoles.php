@@ -82,6 +82,10 @@ trait HasRoles
      */
     public function hasRole($roles)
     {
+        if(is_null($this->roles)){
+            return false;
+        }
+        
         if (is_string($roles)) {
             $roleId = RoleModel::where('name', $roles)->first()->_id;
             return (array_search($roleId,$this->roles) !== false);
