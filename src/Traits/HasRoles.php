@@ -58,6 +58,9 @@ trait HasRoles
      */
     public function getRoles()
     {
+        if(empty($this->roles)){
+            $this->roles = [];
+        }
         return RoleModel::whereIn('_id', $this->roles)->get();
     }
 
