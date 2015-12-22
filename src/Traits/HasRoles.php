@@ -23,7 +23,7 @@ trait HasRoles
     {
         $role = $this->getStoredRole($role);
         $roles = $this->getUserRoles();
-        if(array_search($role->_id,$roles) === false){
+        if (array_search($role->_id, $roles) === false) {
             $roles[] = $role->_id;
         }
         $this->roles = $roles;
@@ -42,9 +42,9 @@ trait HasRoles
         $role = $this->getStoredRole($role);
         $roles = $this->getUserRoles();
 
-        $key = array_search($role->_id,$roles);
-        if($key !== false){
-            unset($roles[$key]);
+        $key = array_search($role->_id, $roles);
+        if ($key !== false) {
+            unset($roles[ $key ]);
         }
 
         $this->roles = $roles;
@@ -58,6 +58,10 @@ trait HasRoles
      */
     public function getRoles()
     {
+        if (empty($this->roles)) {
+            $this->roles = [];
+        }
+
         return RoleModel::whereIn('_id', $this->roles)->get();
     }
 
@@ -65,11 +69,13 @@ trait HasRoles
      * get array of user roles.
      *
      */
-    public function getUserRoles(){
+    public function getUserRoles()
+    {
         $roles = [];
-        if(is_array($this->roles)){
+        if (is_array($this->roles)) {
             $roles = $this->roles;
         }
+
         return $roles;
     }
 
@@ -82,21 +88,23 @@ trait HasRoles
      */
     public function hasRole($roles)
     {
-        if(is_null($this->roles)){
+        if (is_null($this->roles)) {
             return false;
         }
-        
+
         if (is_string($roles)) {
             $roleId = RoleModel::where('name', $roles)->first()->_id;
-            return (array_search($roleId,$this->roles) !== false);
+
+            return (array_search($roleId, $this->roles) !== false);
         }
 
         if ($roles instanceof Role) {
-            return (array_search($roles->_id,$this->roles) !== false);
+            return (array_search($roles->_id, $this->roles) !== false);
 
         }
+        $roleNames = $this->getRoles()->pluck('name');
 
-        return (bool) !!$roles->intersect($this->roles)->count();
+        return (bool)$roles->intersect($roleNames)->count();
     }
 
     /**
@@ -122,11 +130,12 @@ trait HasRoles
     {
         if (is_string($roles)) {
             $roleId = RoleModel::where('name', $roles)->first()->_id;
-            return (array_search($roleId,$this->roles) !== false);
+
+            return (array_search($roleId, $this->roles) !== false);
         }
 
         if ($roles instanceof Role) {
-            return (array_search($roles->_id,$this->roles) !== false);
+            return (array_search($roles->_id, $this->roles) !== false);
         }
 
         $roles = collect()->make($roles)->map(function ($role) {
