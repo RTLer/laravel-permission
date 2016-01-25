@@ -53,7 +53,7 @@ class PermissionRegistrar
 
             return true;
         } catch (Exception $e) {
-            Log::alert('Could not register permissions');
+            //Log::alert('Could not register permissions');
 
             return false;
         }
