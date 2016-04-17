@@ -28,7 +28,7 @@ class PermissionServiceProvider extends ServiceProvider
             ], 'migrations');
         }
 
-        $permissionLoader->registerPermissions();
+        //$permissionLoader->registerPermissions();
     }
 
     /**
