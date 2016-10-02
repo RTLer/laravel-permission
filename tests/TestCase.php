@@ -63,9 +63,9 @@ abstract class TestCase extends Orchestra
 
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite', [
-            'driver' => 'sqlite',
+            'driver'   => 'sqlite',
             'database' => $this->getTempDirectory().'/database.sqlite',
-            'prefix' => '',
+            'prefix'   => '',
         ]);
 
         $app['config']->set('view.paths', [__DIR__.'/resources/views']);
@@ -85,12 +85,13 @@ abstract class TestCase extends Orchestra
             $table->string('email');
         });
 
-        include_once '__DIR__'.'/../resources/migrations/create_permission_tables.php.stub';
+        include_once __DIR__.'/../resources/migrations/create_permission_tables.php.stub';
 
         (new \CreatePermissionTables())->up();
 
         User::create(['email' => 'test@user.com']);
         $app[Role::class]->create(['name' => 'testRole']);
+        $app[Role::class]->create(['name' => 'testRole2']);
         $app[Permission::class]->create(['name' => 'edit-articles']);
         $app[Permission::class]->create(['name' => 'edit-news']);
     }

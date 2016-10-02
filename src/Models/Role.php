@@ -53,7 +53,7 @@ class Role extends Model implements RoleContract
     public function users()
     {
         return $this->belongsToMany(
-            config('auth.model'),
+            config('auth.model') ?: config('auth.providers.users.model'),
             config('laravel-permission.table_names.user_has_roles')
         );
     }
@@ -64,6 +64,8 @@ class Role extends Model implements RoleContract
      * @param string $name
      *
      * @throws RoleDoesNotExist
+     *
+     * @return Role
      */
     public static function findByName($name)
     {
@@ -74,5 +76,21 @@ class Role extends Model implements RoleContract
         }
 
         return $role;
+    }
+
+    /**
+     * Determine if the user may perform the given permission.
+     *
+     * @param string|Permission $permission
+     *
+     * @return bool
+     */
+    public function hasPermissionTo($permission)
+    {
+        if (is_string($permission)) {
+            $permission = app(Permission::class)->findByName($permission);
+        }
+
+        return $this->permissions->contains('id', $permission->id);
     }
 }

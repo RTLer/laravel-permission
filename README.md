@@ -5,6 +5,7 @@
 [![Build Status](https://img.shields.io/travis/spatie/laravel-permission/master.svg?style=flat-square)](https://travis-ci.org/spatie/laravel-permission)
 [![SensioLabsInsight](https://img.shields.io/sensiolabs/i/a25f93ac-5e8f-48c8-a9a1-5d3ef3f9e8f2.svg?style=flat-square)](https://insight.sensiolabs.com/projects/a25f93ac-5e8f-48c8-a9a1-5d3ef3f9e8f2)
 [![Quality Score](https://img.shields.io/scrutinizer/g/spatie/laravel-permission.svg?style=flat-square)](https://scrutinizer-ci.com/g/spatie/laravel-permission)
+[![StyleCI](https://styleci.io/repos/42480275/shield)](https://styleci.io/repos/42480275)
 [![Total Downloads](https://img.shields.io/packagist/dt/spatie/laravel-permission.svg?style=flat-square)](https://packagist.org/packages/spatie/laravel-permission)
 
 This package allows to save permissions and roles in a database. It is built upon [Laravel's
@@ -29,8 +30,18 @@ You can test if a user has a permission with Laravel's default `can`-function.
 $user->can('edit articles');
 ```
 
+If you want a drop-in middleware to check permissions, check out our authorize package: https://github.com/spatie/laravel-authorize
+
 Spatie is webdesign agency in Antwerp, Belgium. You'll find an overview of all 
 our open source projects [on our website](https://spatie.be/opensource).
+
+## Postcardware
+
+You're free to use this package (it's [MIT-licensed](LICENSE.md)), but if it makes it to your production environment you are required to send us a postcard from your hometown, mentioning which of our package(s) you are using.
+
+Our address is: Spatie, Samberstraat 69D, 2060 Antwerp, Belgium.
+
+The best postcards will get published on the open source page on our website.
 
 ## Install
 
@@ -53,6 +64,9 @@ You can publish the migration with:
 php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider" --tag="migrations"
 ```
 
+The package assumes that your users table name is called "users". If this is not the case
+you should manually edit the published migration to use your custom table name.
+
 After the migration has been published you can create the role- and permission-tables by
 running the migrations:
 
@@ -68,6 +82,8 @@ php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvid
 This is the contents of the published config file:
 
 ```php
+// config/laravel-permission.php
+
 return [
 
     /*
@@ -189,14 +205,24 @@ return [
 ];
 ```
 
-And finally add the `Spatie\Permission\Traits\HasRoles`-trait to the User model.
-
 ## Usage
 
-This package allows for users to be associated with roles. Permissions can be 
-associated with roles.
-A `Role` and a `Permission` are regular Eloquent-models. They can have a name 
-and can be created like this:
+First add the `Spatie\Permission\Traits\HasRoles`-trait to your User model.
+
+```php
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Spatie\Permission\Traits\HasRoles;
+
+class User extends Authenticatable
+{
+    use HasRoles;
+    
+    // ...
+}
+```
+
+This package allows for users to be associated with roles. Permissions can be associated with roles.
+A `Role` and a `Permission` are regular Eloquent-models. They can have a name and can be created like this:
 
 ```php
 use Spatie\Permission\Models\Role;
@@ -206,11 +232,24 @@ $role = Role::create(['name' => 'writer']);
 $permission = Permission::create(['name' => 'edit articles']);
 ```
 
+The `HasRoles` adds eloquent relationships to your models, which can be accessed directly or used as a base query.
+
+```php
+$permissions = $user->permissions;
+$roles = $user->roles()->pluck('name'); // returns a collection
+```
+
 ###Using permissions
 A permission can be given to a user:
 
 ```php
 $user->givePermissionTo('edit articles');
+
+//you can also give multiple permission at once
+$user->givePermissionTo('edit articles', 'delete articles');
+
+//you may also pass an array
+$user->givePermissionTo(['edit articles', 'delete articles']);
 ```
 
 A permission can be revoked from a user:
@@ -235,6 +274,10 @@ A role can be assigned to a user:
 
 ```php
 $user->assignRole('writer');
+
+// you can also assign multiple roles at once
+$user->assignRole('writer', 'admin');
+$user->assignRole(['writer', 'admin']);
 ```
 
 A role can be removed from a user:
@@ -242,6 +285,14 @@ A role can be removed from a user:
 ```php
 $user->removeRole('writer');
 ```
+
+Roles can also be synced :
+
+```php
+//all current roles will be removed from the user and replace by the array given
+$user->syncRoles(['writer', 'admin']);
+```
+
 You can determine if a user has a certain role:
 
 ```php
@@ -265,6 +316,13 @@ A permission can be given to a role:
 
 ```php
 $role->givePermissionTo('edit articles');
+```
+
+
+You can determine if a role has a certain permission:
+
+```php
+$role->hasPermissionTo('edit articles');
 ```
 
 A permission can be revoked from a role:
@@ -317,6 +375,59 @@ I don't have all of these roles...
 @endhasallroles
 ```
 
+You can use Laravel's native `@can` directive to check if a user has a certain permission.
+
+## Using a middleware
+The package doesn't contain a middleware to check permissions but it's very trivial to add this yourself.
+
+``` bash
+$ php artisan make:middleware RoleMiddleware
+```
+
+This will create a RoleMiddleware for you, where you can handle your role and permissions check.
+```php
+// app/Http/Middleware/RoleMiddleware.php
+use Auth;
+
+...
+
+public function handle($request, Closure $next, $role, $permission)
+{
+    if (Auth::guest()) {
+        return redirect($urlOfYourLoginPage);
+    }
+
+    if (! $request->user()->hasRole($role)) {
+       abort(403);
+    }
+    
+    if (! $request->user()->can($permission)) {
+       abort(403);
+    }
+
+    return $next($request);
+}
+```
+
+Don't forget to add the route middleware to your Kernel:
+
+```php
+// app/Http/Kernel.php
+protected $routeMiddleware = [
+    ...
+    'role' => \App\Http\Middleware\RoleMiddleware::class,
+    ...
+];
+```
+
+Now you can protect your routes using the middleware you just set up:
+
+```php
+Route::group(['middleware' => ['role:admin,access_backend']], function () {
+    //
+});
+```
+
 ## Extending
 
 If you need to extend or replace the existing `Role` or `Permission` models you just need to 
@@ -355,9 +466,10 @@ can be found [in this repo on GitHub](https://github.com/laracasts/laravel-5-rol
 
 ## Alternatives
 
+- [JosephSilber/bouncer](https://github.com/JosephSilber/bouncer)
 - [BeatSwitch/lock-laravel](https://github.com/BeatSwitch/lock-laravel)
 - [Zizaco/entrust](https://github.com/Zizaco/entrust)
-- [JosephSilber/bouncer](https://github.com/JosephSilber/bouncer)
+- [bican/roles](https://github.com/romanbican/roles)
 
 ## About Spatie
 Spatie is webdesign agency in Antwerp, Belgium. You'll find an overview of all our open source projects [on our website](https://spatie.be/opensource).

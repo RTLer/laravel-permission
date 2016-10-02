@@ -39,21 +39,31 @@ trait HasRoles
     /**
      * Assign the given role to the user.
      *
-     * @param string|Role $role
+     * @param array|string|\Spatie\Permission\Models\Role ...$roles
      *
-     * @return Role
+     * @return \Spatie\Permission\Contracts\Role
      */
-    public function assignRole($role)
+    public function assignRole(...$roles)
     {
-        $this->roles()->save($this->getStoredRole($role));
+        $roles = collect($roles)
+            ->flatten()
+            ->map(function ($role) {
+                return $this->getStoredRole($role);
+            })
+            ->all();
+
+
+        $this->roles()->saveMany($roles);
+
+        $this->forgetCachedPermissions();
+
+        return $this;
     }
 
     /**
      * Revoke the given role from the user.
      *
      * @param string|Role $role
-     *
-     * @return mixed
      */
     public function removeRole($role)
     {
@@ -61,9 +71,23 @@ trait HasRoles
     }
 
     /**
+     * Remove all current roles and set the given ones.
+     *
+     * @param array ...$roles
+     *
+     * @return $this
+     */
+    public function syncRoles(...$roles)
+    {
+        $this->roles()->detach();
+
+        return $this->assignRole($roles);
+    }
+
+    /**
      * Determine if the user has (one of) the given role(s).
      *
-     * @param string|Role|\Illuminate\Support\Collection $roles
+     * @param string|array|Role|\Illuminate\Support\Collection $roles
      *
      * @return bool
      */
@@ -77,13 +101,23 @@ trait HasRoles
             return $this->roles->contains('id', $roles->id);
         }
 
-        return (bool) !!$roles->intersect($this->roles)->count();
+        if (is_array($roles)) {
+            foreach ($roles as $role) {
+                if ($this->hasRole($role)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return (bool) $roles->intersect($this->roles)->count();
     }
 
     /**
      * Determine if the user has any of the given role(s).
      *
-     * @param string|Role|\Illuminate\Support\Collection $roles
+     * @param string|array|Role|\Illuminate\Support\Collection $roles
      *
      * @return bool
      */
@@ -113,13 +147,13 @@ trait HasRoles
             return $role instanceof Role ? $role->name : $role;
         });
 
-        return $roles->intersect($this->roles->lists('name')) == $roles;
+        return $roles->intersect($this->roles->pluck('name')) == $roles;
     }
 
     /**
      * Determine if the user may perform the given permission.
      *
-     * @param Permission $permission
+     * @param string|Permission $permission
      *
      * @return bool
      */
@@ -147,7 +181,7 @@ trait HasRoles
     }
 
     /**
-     * Determine if the user has, via roles, has the given permission.
+     * Determine if the user has, via roles, the given permission.
      *
      * @param Permission $permission
      *
@@ -159,16 +193,20 @@ trait HasRoles
     }
 
     /**
-     * Determine if the user has has the given permission.
+     * Determine if the user has the given permission.
      *
-     * @param Permission $permission
+     * @param string|Permission $permission
      *
      * @return bool
      */
-    protected function hasDirectPermission(Permission $permission)
+    protected function hasDirectPermission($permission)
     {
         if (is_string($permission)) {
             $permission = app(Permission::class)->findByName($permission);
+
+            if (!$permission) {
+                return false;
+            }
         }
 
         return $this->permissions->contains('id', $permission->id);
