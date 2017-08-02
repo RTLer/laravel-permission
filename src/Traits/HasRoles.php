@@ -45,7 +45,7 @@ trait HasRoles
         $key = array_search($role->_id, $roles);
         if ($key !== false) {
             unset($roles[ $key ]);
-            array_values($roles);
+            $roles = array_values($roles);
         }
 
         $this->roles = $roles;
