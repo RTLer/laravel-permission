@@ -2,7 +2,7 @@
 
 namespace Spatie\Permission\Models;
 
-use Jenssegers\Mongodb\Model;
+use Moloquent\Eloquent\Model;
 use Spatie\Permission\Contracts\Role as RoleContract;
 use Spatie\Permission\Exceptions\RoleDoesNotExist;
 use Spatie\Permission\Traits\HasPermissions;
